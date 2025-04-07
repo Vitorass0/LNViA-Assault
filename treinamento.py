@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-from tensorflow.keras.models import Sequential
+from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import GRU, Dense
 from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
@@ -15,7 +15,6 @@ import kerastuner as kt
 # Função para criar sequências temporais a partir do CSV
 #############################################
 def create_sequences(csv_path, sequence_length=30):
-   
     df = pd.read_csv(csv_path)
     df = df.sort_values(by=['video', 'frame'])
     use_label = 'label' in df.columns
@@ -37,7 +36,6 @@ def create_sequences(csv_path, sequence_length=30):
 # Função para construir o modelo com hiperparâmetros variáveis
 #############################################
 def build_model_hp(hp, timesteps, feature_dim):
-  
     model = Sequential()
     units = hp.Choice('units', values=[32, 64, 128])
     dropout_rate = hp.Float('dropout', 0.0, 0.5, step=0.1)
@@ -59,7 +57,6 @@ def build_model_hp(hp, timesteps, feature_dim):
 # Função para treinar e avaliar o modelo com Keras Tuner
 #############################################
 def tune_model(X, y, sequence_length, feature_dim, max_trials=10, epochs=10):
-   
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
     tuner = kt.RandomSearch(
@@ -73,7 +70,6 @@ def tune_model(X, y, sequence_length, feature_dim, max_trials=10, epochs=10):
     
     tuner.search(X_train, y_train, epochs=epochs, validation_split=0.2)
     
-   
     tuner.results_summary()
     
     best_model = tuner.get_best_models(num_models=1)[0]
@@ -105,14 +101,15 @@ def tune_model(X, y, sequence_length, feature_dim, max_trials=10, epochs=10):
     plt.title('Curva ROC')
     plt.legend(loc="lower right")
     plt.show()
-
+    
+    return best_model
 
 #############################################
-# Função principal (Main)
+# Função principal (Treinamento isolado)
 #############################################
 def main():
-    merged_csv_path = r'C:\Users\vitor\Downloads\Projeto-IA\dados_mesclados.csv'
-
+    # Caminho para o CSV mesclado (ajuste para o seu ambiente)
+    merged_csv_path = r'C:\Users\vitor\Downloads\Projeto-IA\Dados\dados_mesclados.csv'
     sequence_length = 30
 
     X, y = create_sequences(merged_csv_path, sequence_length=sequence_length)
@@ -122,7 +119,11 @@ def main():
     feature_dim = X.shape[2]
     print("Feature dimension:", feature_dim)
 
-    tune_model(X, y, sequence_length, feature_dim, max_trials=10, epochs=10)
+    best_model = tune_model(X, y, sequence_length, feature_dim, max_trials=10, epochs=10)
+
+    # Salva o modelo treinado para ser utilizado depois pela interface
+    best_model.save("best_model.keras")
+    print("Modelo treinado salvo")
 
 if __name__ == '__main__':
     main()
